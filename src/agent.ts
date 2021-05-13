@@ -12,7 +12,7 @@ export interface LoadOptions {
   /**
    * When browser doesn't support `requestIdleCallback` a `setTimeout` will be used. This number is only for Safari and
    * old Edge, because Chrome/Blink based browsers support `requestIdleCallback`. The value is in milliseconds.
-   * @default 50
+   * @default 500
    */
   delayFallback?: number
 }
