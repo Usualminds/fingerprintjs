@@ -1,5 +1,6 @@
 import { isChromium, isWebKit } from '../utils/browser'
 import { withIframe } from '../utils/dom'
+import { MaybePromise } from '../utils/async'
 
 type WritableCSSProperties = {
   [K in keyof CSSStyleDeclaration]: CSSStyleDeclaration[K] extends string ? K : never
@@ -33,7 +34,7 @@ export const presets: Record<string, Preset> = {
   /** User can change it in desktop Chrome and desktop Firefox. */
   mono: [{ fontFamily: 'monospace' }],
   /**
-   * Check the minimal allowed font size. User can change it in desktop Chrome, desktop Firefox and desktop Safari.
+   * Check the smallest allowed font size. User can change it in desktop Chrome, desktop Firefox and desktop Safari.
    * The height can be 0 in Chrome on a retina display.
    */
   min: [{ fontSize: '1px' }],
@@ -91,7 +92,7 @@ export default function getFontPreferences(): Promise<Record<string, number>> {
  * Don't put a content to measure inside an absolutely positioned element.
  */
 function withNaturalFonts<T>(
-  action: (document: Document, container: HTMLElement) => Promise<T> | T,
+  action: (document: Document, container: HTMLElement) => MaybePromise<T>,
   containerWidthPx = 4000,
 ): Promise<T> {
   /*

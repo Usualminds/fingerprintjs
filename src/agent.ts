@@ -1,9 +1,10 @@
 import { version } from '../package.json'
 import { requestIdleCallbackIfAvailable } from './utils/async'
+import { UnknownComponents } from './utils/entropy_source'
 import { x64hash128 } from './utils/hashing'
 import { errorToObject } from './utils/misc'
-import getBuiltinComponents, { BuiltinComponents, UnknownComponents } from './sources'
-import { watchScreenFrame } from './sources/screen_frame'
+import loadBuiltinSources, { BuiltinComponents } from './sources'
+import getConfidence, { Confidence } from './confidence'
 
 /**
  * Options for Fingerprint class loading
@@ -15,6 +16,16 @@ export interface LoadOptions {
    * @default 500
    */
   delayFallback?: number
+  /**
+   * Whether to print debug messages to the console.
+   * Required to ease investigations of problems.
+   */
+  debug?: boolean
+  /**
+   * Set `false` to disable the unpersonalized AJAX request that the agent sends to collect installation statistics.
+   * It's always disabled in the version published to the FingerprintJS CDN.
+   */
+  monitoring?: boolean
 }
 
 /**
@@ -23,7 +34,8 @@ export interface LoadOptions {
 export interface GetOptions {
   /**
    * Whether to print debug messages to the console.
-   * Required to ease investigations of problems.
+   *
+   * @deprecated Use the `debug` option of `load()` instead
    */
   debug?: boolean
 }
@@ -36,6 +48,10 @@ export interface GetResult {
    * The visitor identifier
    */
   visitorId: string
+  /**
+   * A confidence score that tells how much the agent is sure about the visitor identifier
+   */
+  confidence: Confidence
   /**
    * List of components that has formed the visitor identifier.
    *
@@ -93,12 +109,14 @@ export function hashComponents(components: UnknownComponents): string {
  * Makes a GetResult implementation that calculates the visitor id hash on demand.
  * Designed for optimisation.
  */
-function makeLazyGetResult<T extends UnknownComponents>(components: T) {
+function makeLazyGetResult(components: BuiltinComponents): GetResult {
   let visitorIdCache: string | undefined
+
+  // This function runs very fast, so there is no need to make it lazy
+  const confidence = getConfidence(components)
 
   // A plain class isn't used because its getters and setters aren't enumerable.
   return {
-    components,
     get visitorId(): string {
       if (visitorIdCache === undefined) {
         visitorIdCache = hashComponents(this.components)
@@ -108,53 +126,85 @@ function makeLazyGetResult<T extends UnknownComponents>(components: T) {
     set visitorId(visitorId: string) {
       visitorIdCache = visitorId
     },
+    confidence,
+    components,
     version,
   }
 }
 
 /**
- * The class isn't exported from the index file to not expose the constructor.
- * The hiding gives more freedom for future non-breaking updates.
+ * A delay is required to ensure consistent entropy components.
+ * See https://github.com/fingerprintjs/fingerprintjs/issues/254
+ * and https://github.com/fingerprintjs/fingerprintjs/issues/307
+ * and https://github.com/fingerprintjs/fingerprintjs/commit/945633e7c5f67ae38eb0fea37349712f0e669b18
  */
-export class OpenAgent implements Agent {
-  constructor() {
-    watchScreenFrame()
-  }
+export function prepareForSources(delayFallback = 50): Promise<void> {
+  // A proper deadline is unknown. Let it be twice the fallback timeout so that both cases have the same average time.
+  return requestIdleCallbackIfAvailable(delayFallback, delayFallback * 2)
+}
 
-  /**
-   * @inheritDoc
-   */
-  public async get(options: Readonly<GetOptions> = {}): Promise<GetResult> {
-    const components = await getBuiltinComponents(options)
-    const result = makeLazyGetResult(components)
+/**
+ * The function isn't exported from the index file to not allow to call it without `load()`.
+ * The hiding gives more freedom for future non-breaking updates.
+ *
+ * A factory function is used instead of a class to shorten the attribute names in the minified code.
+ * Native private class fields could've been used, but TypeScript doesn't allow them with `"target": "es5"`.
+ */
+function makeAgent(getComponents: () => Promise<BuiltinComponents>, debug?: boolean): Agent {
+  const creationTime = Date.now()
 
-    if (options.debug) {
-      // console.log is ok here because it's under a debug clause
-      // eslint-disable-next-line no-console
-      console.log(`Copy the text below to get the debug data:
+  return {
+    async get(options) {
+      const startTime = Date.now()
+      const components = await getComponents()
+      const result = makeLazyGetResult(components)
+
+      if (debug || options?.debug) {
+        // console.log is ok here because it's under a debug clause
+        // eslint-disable-next-line no-console
+        console.log(`Copy the text below to get the debug data:
 
 \`\`\`
 version: ${result.version}
 userAgent: ${navigator.userAgent}
-getOptions: ${JSON.stringify(options, undefined, 2)}
+timeBetweenLoadAndGet: ${startTime - creationTime}
 visitorId: ${result.visitorId}
 components: ${componentsToDebugString(components)}
 \`\`\``)
-    }
+      }
 
-    return result
+      return result
+    },
+  }
+}
+
+/**
+ * Sends an unpersonalized AJAX request to collect installation statistics
+ */
+function monitor() {
+  // The FingerprintJS CDN (https://github.com/fingerprintjs/cdn) replaces `window.__fpjs_d_m` with `true`
+  if (window.__fpjs_d_m || Math.random() >= 0.001) {
+    return
+  }
+  try {
+    const request = new XMLHttpRequest()
+    request.open('get', `https://m1.openfpcdn.io/fingerprintjs/v${version}/npm-monitoring`, true)
+    request.send()
+  } catch (error) {
+    // console.error is ok here because it's an unexpected error handler
+    // eslint-disable-next-line no-console
+    console.error(error)
   }
 }
 
 /**
  * Builds an instance of Agent and waits a delay required for a proper operation.
  */
-export async function load({ delayFallback = 50 }: Readonly<LoadOptions> = {}): Promise<Agent> {
-  // A delay is required to ensure consistent entropy components.
-  // See https://github.com/fingerprintjs/fingerprintjs/issues/254
-  // and https://github.com/fingerprintjs/fingerprintjs/issues/307
-  // and https://github.com/fingerprintjs/fingerprintjs/commit/945633e7c5f67ae38eb0fea37349712f0e669b18
-  // A proper deadline is unknown. Let it be twice the fallback timeout so that both cases have the same average time.
-  await requestIdleCallbackIfAvailable(delayFallback, delayFallback * 2)
-  return new OpenAgent()
+export async function load({ delayFallback, debug, monitoring = true }: Readonly<LoadOptions> = {}): Promise<Agent> {
+  if (monitoring) {
+    monitor()
+  }
+  await prepareForSources(delayFallback)
+  const getComponents = loadBuiltinSources({ debug })
+  return makeAgent(getComponents, debug)
 }

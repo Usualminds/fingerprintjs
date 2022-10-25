@@ -36,7 +36,6 @@
     }
     header img {
       height: 5vh;
-      margin-left: -0.8vh;
       max-width: 100%;
     }
     button {
@@ -112,6 +111,21 @@
     .output .heading:not(:first-child) {
       margin-top: 2em;
     }
+    .output .comment {
+      font-size: 87%;
+      margin-top: 0.6em;
+      color: #a3a7ad;
+    }
+    .output a {
+      color: inherit;
+      -webkit-text-decoration: dotted underline;
+      text-decoration: dotted underline;
+    }
+    .output a:hover {
+      color: inherit;
+      -webkit-text-decoration: underline;
+      text-decoration: underline;
+    }
 
     @media (max-width: 768px), (max-height: 568px) {
       .content {
@@ -130,7 +144,7 @@
   <div class="content">
     <header>
       <a href="<%= require('../package.json').homepage %>">
-        <img src="<%= require('../resources/logo.svg').default %>" alt="FingerprintJS">
+        <img src="<%= require('../resources/logo_dark.svg').default %>" alt="FingerprintJS logo">
       </a>
     </header>
     <div class="buttons">

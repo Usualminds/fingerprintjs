@@ -124,7 +124,7 @@ export function isGecko(): boolean {
     countTruthy([
       'buildID' in navigator,
       'MozAppearance' in (document.documentElement?.style ?? {}),
-      'MediaRecorderErrorEvent' in w,
+      'onmozfullscreenchange' in w,
       'mozInnerScreenX' in w,
       'CSSMozDocumentRule' in w,
       'CanvasCaptureMediaStream' in w,
@@ -193,7 +193,8 @@ export function isIPad(): boolean {
     countTruthy([
       'MediaSource' in window, // Since iOS 13
       !!Element.prototype.webkitRequestFullscreen, // Since iOS 12
-      screenRatio > 2 / 3 && screenRatio < 3 / 2,
+      // iPhone 4S that runs iOS 9 matches this. But it won't match the criteria above, so it won't be detected as iPad.
+      screenRatio > 0.65 && screenRatio < 1.53,
     ]) >= 2
   )
 }
@@ -215,6 +216,9 @@ export function exitFullscreen(): Promise<void> {
 
 /**
  * Checks whether the device runs on Android without using user-agent.
+ *
+ * Warning for package users:
+ * This function is out of Semantic Versioning, i.e. can change unexpectedly. Usage is at your own risk.
  */
 export function isAndroid(): boolean {
   const isItChromium = isChromium()
@@ -234,7 +238,7 @@ export function isAndroid(): boolean {
     countTruthy([
       'onorientationchange' in w,
       'orientation' in w,
-      isItChromium && 'SharedWorker' in w,
+      isItChromium && !('SharedWorker' in w),
       isItGecko && /android/i.test(navigator.appVersion),
     ]) >= 2
   )
