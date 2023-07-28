@@ -103,6 +103,11 @@ To run the tests in browsers on [BrowserStack](https://www.browserstack.com), ge
 # For Linux, macOS and WSL (Linux on Windows)
 BROWSERSTACK_USERNAME=your-username BROWSERSTACK_ACCESS_KEY=your-key yarn test:browserstack
 ```
+If you face `Error: spawn Unknown system error -86` on macOS, try installing Rosetta:
+```bash
+softwareupdate --install-rosetta
+```
+
 Alternatively, make a PR to this repository, the test will run on BrowserStack automatically.
 But the test won't run when the PR is made from a fork repository, in this case a member will run the tests manually.
 
@@ -234,6 +239,13 @@ async function entropySource() {
 
 When you complete an entropy source, add it to [src/sources/index.ts](src/sources/index.ts).
 
+Every entropy source needs to be covered with unit tests.
+These tests are meant to verify that the entropy source returns expected values across all supported browsers.
+In the event of significant changes or deprecation of underlying APIs, these tests should start to fail in future browser versions.
+Additionally, if deemed necessary, it's recommended to include a test to ensure that the entropy source remains stable.
+
+For inspiration see existing tests in [src/sources/](src/sources/).
+
 ### How to publish
 
 This section is for repository maintainers.
@@ -250,4 +262,4 @@ This section is for repository maintainers.
     ```
 5. Push the changes to the repository, and a version tag like `v1.3.4` to the commit.
 6. Describe the version changes at the [releases section](https://github.com/fingerprintjs/fingerprintjs/releases).
-7. Update agent at https://stackblitz.com/edit/fpjs-3-npm (find "dependencies" and click the round arrow)
+7. Update agent at https://stackblitz.com/edit/fpjs-4-npm (find "dependencies" and click the round arrow)

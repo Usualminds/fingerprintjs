@@ -31,6 +31,11 @@ import isMotionReduced from './reduced_motion'
 import isHDR from './hdr'
 import getMathFingerprint from './math'
 import getFontPreferences from './font_preferences'
+import isPdfViewerEnabled from './pdf_viewer_enabled'
+import getArchitecture from './architecture'
+import getApplePayState from './apple_pay'
+import getPrivateClickMeasurement from './private_click_measurement'
+import { getWebGlBasics, getWebGlExtensions } from './webgl'
 
 /**
  * The list of entropy sources used to make visitor identifiers.
@@ -53,6 +58,7 @@ export const sources = {
   fontPreferences: getFontPreferences,
   audio: getAudioFingerprint,
   screenFrame: getRoundedScreenFrame,
+  canvas: getCanvasFingerprint,
 
   osCpu: getOsCpu,
   languages: getLanguages,
@@ -68,7 +74,6 @@ export const sources = {
   cpuClass: getCpuClass,
   platform: getPlatform,
   plugins: getPlugins,
-  canvas: getCanvasFingerprint,
   touchSupport: getTouchSupport,
   vendor: getVendor,
   vendorFlavors: getVendorFlavors,
@@ -81,6 +86,15 @@ export const sources = {
   reducedMotion: isMotionReduced,
   hdr: isHDR,
   math: getMathFingerprint,
+  pdfViewerEnabled: isPdfViewerEnabled,
+  architecture: getArchitecture,
+  applePay: getApplePayState,
+  privateClickMeasurement: getPrivateClickMeasurement,
+
+  // Some sources can affect other sources (e.g. WebGL can affect canvas), so it's important to run these sources
+  // after other sources.
+  webGlBasics: getWebGlBasics,
+  webGlExtensions: getWebGlExtensions,
 }
 
 /**
@@ -95,6 +109,7 @@ export type BuiltinComponents = SourcesToComponents<typeof sources>
 
 export interface BuiltinSourceOptions {
   debug?: boolean
+  cache: Record<string, unknown>
 }
 
 /**

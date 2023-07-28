@@ -1,32 +1,39 @@
-import * as path from 'path'
-import type { RollupOptions, OutputOptions } from 'rollup'
+import * as fs from 'fs'
+import type { RollupOptions } from 'rollup'
 import jsonPlugin from '@rollup/plugin-json'
 import nodeResolvePlugin from '@rollup/plugin-node-resolve'
 import typescriptPlugin from '@rollup/plugin-typescript'
-import { terser as terserPlugin } from 'rollup-plugin-terser'
+import terserPlugin from '@rollup/plugin-terser'
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore Otherwise ts-node reject to run make_selectors_tester.ts
 import dtsPlugin from 'rollup-plugin-dts'
 import licensePlugin from 'rollup-plugin-license'
 import terserConfig from './terser.config'
-import { dependencies } from './package.json'
+
+const { dependencies } = JSON.parse(fs.readFileSync('package.json', 'utf8'))
 
 const outputDirectory = 'dist'
 
-const commonBanner = licensePlugin({
-  banner: {
-    content: {
-      file: path.join(__dirname, 'resources', 'license_banner.txt'),
-    },
-  },
-})
-
 const commonInput = {
-  input: './src/index.ts',
-  plugins: [nodeResolvePlugin(), jsonPlugin(), typescriptPlugin(), commonBanner],
+  input: 'src/index.ts',
+  plugins: [nodeResolvePlugin(), jsonPlugin(), typescriptPlugin()],
 }
 
-const commonOutput: OutputOptions = {
+const commonOutput = {
   name: 'FingerprintJS',
-  exports: 'named',
+  exports: 'named' as const,
+  plugins: [
+    licensePlugin({
+      banner: {
+        content: {
+          file: 'resources/license_banner.txt',
+        },
+        data: {
+          license: fs.readFileSync('LICENSE', 'utf8').trim(),
+        },
+      },
+    }),
+  ],
 }
 
 const commonTerser = terserPlugin(terserConfig)
@@ -46,7 +53,7 @@ const config: RollupOptions[] = [
         ...commonOutput,
         file: `${outputDirectory}/fp.min.js`,
         format: 'iife',
-        plugins: [commonTerser],
+        plugins: [commonTerser, ...commonOutput.plugins],
       },
 
       // UMD for users who use Require.js or Electron and want to leverage them
@@ -59,7 +66,7 @@ const config: RollupOptions[] = [
         ...commonOutput,
         file: `${outputDirectory}/fp.umd.min.js`,
         format: 'umd',
-        plugins: [commonTerser],
+        plugins: [commonTerser, ...commonOutput.plugins],
       },
     ],
   },
@@ -88,8 +95,9 @@ const config: RollupOptions[] = [
   // TypeScript definition
   {
     ...commonInput,
-    plugins: [dtsPlugin(), commonBanner],
+    plugins: [dtsPlugin()],
     output: {
+      ...commonOutput,
       file: `${outputDirectory}/fp.d.ts`,
       format: 'esm',
     },

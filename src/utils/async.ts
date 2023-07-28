@@ -4,6 +4,13 @@ export function wait<T = void>(durationMs: number, resolveWith?: T): Promise<T> 
   return new Promise((resolve) => setTimeout(resolve, durationMs, resolveWith))
 }
 
+/**
+ * Allows asynchronous actions and microtasks to happen.
+ */
+export function releaseEventLoop(): Promise<void> {
+  return wait(0)
+}
+
 export function requestIdleCallbackIfAvailable(fallbackTimeout: number, deadlineTimeout = Infinity): Promise<void> {
   const { requestIdleCallback } = window
   if (requestIdleCallback) {
@@ -17,7 +24,7 @@ export function requestIdleCallbackIfAvailable(fallbackTimeout: number, deadline
 }
 
 export function isPromise<T>(value: PromiseLike<T> | unknown): value is PromiseLike<T> {
-  return value && typeof (value as PromiseLike<T>).then === 'function'
+  return !!value && typeof (value as PromiseLike<T>).then === 'function'
 }
 
 /**
@@ -57,15 +64,16 @@ export function awaitIfAsync<TResult, TError = unknown>(
  * (e.g. completing a network request, rendering the page) won't be able to happen.
  * This function allows running many synchronous tasks such way that asynchronous tasks can run too in background.
  */
-export async function forEachWithBreaks<T>(
+export async function mapWithBreaks<T, U>(
   items: readonly T[],
-  callback: (item: T, index: number) => unknown,
+  callback: (item: T, index: number) => U,
   loopReleaseInterval = 16,
-): Promise<void> {
+): Promise<U[]> {
+  const results = Array<U>(items.length)
   let lastLoopReleaseTime = Date.now()
 
   for (let i = 0; i < items.length; ++i) {
-    callback(items[i], i)
+    results[i] = callback(items[i], i)
 
     const now = Date.now()
     if (now >= lastLoopReleaseTime + loopReleaseInterval) {
@@ -74,6 +82,8 @@ export async function forEachWithBreaks<T>(
       await wait(0)
     }
   }
+
+  return results
 }
 
 /**
