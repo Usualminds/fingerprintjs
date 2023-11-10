@@ -23,11 +23,11 @@ describe('Browser utilities', () => {
       expect(browser.isWebKit()).toBe(utils.isWebKit())
     })
 
-    it('detects desktop Safari', () => {
+    it('detects desktop WebKit', () => {
       if (!utils.isWebKit()) {
         return
       }
-      expect(browser.isDesktopSafari()).toBe(!utils.isMobile() && !utils.isTablet())
+      expect(browser.isDesktopWebKit()).toBe(!utils.isMobile() && !utils.isTablet())
     })
 
     it('detects Chromium 86+', () => {
@@ -46,12 +46,26 @@ describe('Browser utilities', () => {
       expect(browser.isWebKit606OrNewer()).toBe((utils.getBrowserMajorVersion() ?? 0) >= 12)
     })
 
+    it('detects Safari 17+', () => {
+      if (!utils.isSafari()) {
+        return
+      }
+      expect(browser.isWebKit616OrNewer()).toBe((utils.getBrowserMajorVersion() ?? 0) >= 17)
+    })
+
     it('detects iPad', () => {
       // Unfortunately, UA-parser can't detect an iPad that pretends to be a Mac
       if (!utils.isWebKit() || !(utils.isMobile() || utils.isTablet())) {
         return
       }
       expect(browser.isIPad()).toBe(utils.isTablet())
+    })
+
+    it('detects Safari', () => {
+      if (!utils.isWebKit() || (utils.getBrowserMajorVersion() ?? 0) < 15) {
+        return
+      }
+      expect(browser.isSafariWebKit()).toBe(utils.isSafari())
     })
   })
 

@@ -9,7 +9,7 @@ import getLanguages from './languages'
 import getColorDepth from './color_depth'
 import getDeviceMemory from './device_memory'
 import getScreenResolution from './screen_resolution'
-import { getRoundedScreenFrame } from './screen_frame'
+import getScreenFrame from './screen_frame'
 import getHardwareConcurrency from './hardware_concurrency'
 import getTimezone from './timezone'
 import getSessionStorage from './session_storage'
@@ -28,6 +28,7 @@ import areColorsForced from './forced_colors'
 import getMonochromeDepth from './monochrome'
 import getContrastPreference from './contrast'
 import isMotionReduced from './reduced_motion'
+import isTransparencyReduced from './reduced_transparency'
 import isHDR from './hdr'
 import getMathFingerprint from './math'
 import getFontPreferences from './font_preferences'
@@ -57,7 +58,7 @@ export const sources = {
   domBlockers: getDomBlockers,
   fontPreferences: getFontPreferences,
   audio: getAudioFingerprint,
-  screenFrame: getRoundedScreenFrame,
+  screenFrame: getScreenFrame,
   canvas: getCanvasFingerprint,
 
   osCpu: getOsCpu,
@@ -84,6 +85,7 @@ export const sources = {
   monochrome: getMonochromeDepth,
   contrast: getContrastPreference,
   reducedMotion: isMotionReduced,
+  reducedTransparency: isTransparencyReduced,
   hdr: isHDR,
   math: getMathFingerprint,
   pdfViewerEnabled: isPdfViewerEnabled,
